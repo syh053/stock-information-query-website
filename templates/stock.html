@@ -1,0 +1,258 @@
+{% extends "public/base.html" %}
+
+{% block content %}
+
+  <form class="mx-auto mt-5" style="width: 50%;" method="GET" action="/stock">
+    <label for="stock_num" class="form-label fs-4">輸入股票代碼 :</label>
+    <div class="d-flex flex-row mb-3">
+      <input type="text" class="form-control" id="stock_num" name="stock_num" style="width: 30%;">
+      <button type="submit" class="btn btn-primary ms-5">查詢</button>
+    </div>
+  </form>
+
+  <script type="text/javascript" src="https://fastly.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <!-- <div id="main" style="height: 100%"></div> -->
+  <div id="main" style="width: 100%;height:30vh;"></div>
+
+
+  <table class="table table-bordered border-black mt-5 mx-auto" style="width: 75%;">
+    <thead>
+      <tr>
+        <th class="bg-secondary text-white" scope="col">日期</th>
+        <th class="bg-secondary text-white" scope="col">Open</th>
+        <th class="bg-secondary text-white" scope="col">High</th>
+        <th class="bg-secondary text-white" scope="col">LOW</th>
+        <th class="bg-secondary text-white" scope="col">Close</th>
+        <th class="bg-secondary text-white" scope="col">Volume</th>
+        <th class="bg-secondary text-white" scope="col">sma5</th>
+        <th class="bg-secondary text-white" scope="col">sma10</th>
+        <th class="bg-secondary text-white" scope="col">sma20</th>
+        <th class="bg-secondary text-white" scope="col">sma60</th>
+        <th class="bg-secondary text-white" scope="col">sma200</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for data in (datas[-15:][::-1] if datas else []) %}
+        <tr>
+          {% for cell in data %}
+            <td class="bg-secondary-subtle text-secondary-emphasis">{{ cell }}</td>
+          {% endfor %}
+      {% endfor %}
+        </tr>
+    </tbody>
+  </table>
+
+  {% if stock_datas %}
+    <script>
+
+      var chartDom = document.getElementById('main');
+      var myChart = echarts.init(chartDom);
+      var option;
+
+      const upColor = '#ec0000';
+      const upBorderColor = '#8A0000';
+      const downColor = '#00da3c';
+      const downBorderColor = '#008F28';
+      // Each item: open，close，lowest，highest
+      option = {
+        title: {
+          text: '{{ stock_num }} 技術圖',
+          left: '8%'
+        },
+        tooltip: {
+          trigger: 'axis',  
+          axisPointer: {
+            type: 'cross'
+          }
+        },
+        legend: {
+          data: ['日K', 'MA5', 'MA10', 'MA20', 'MA60', 'MA200'],
+          top: 10
+        },
+        grid: {
+          left: '10%',
+          right: '10%',
+          bottom: '5%'
+        },
+        xAxis: {
+          type: 'category',
+          // data: data0.categoryData,
+          data: {{ stock_datas["dates"] | tojson }},
+          boundaryGap: false,
+          axisLine: { onZero: false },
+          splitLine: { show: false },
+          min: 'dataMin',
+          max: 'dataMax'
+        },
+        yAxis: {
+          scale: true,
+          splitArea: {
+            show: true
+          }
+        },
+        dataZoom: [
+          {
+            type: 'inside',
+            start: 50,
+            end: 100
+          },
+          {
+            show: true,
+            type: 'slider',
+            top: '90%',
+            start: 50,
+            end: 100
+          }
+        ],
+        series: [
+          {
+            name: '日K',
+            type: 'candlestick',
+            // data: data0.values,
+            data: {{ stock_datas['k_datas'] | tojson }},  
+            itemStyle: {
+              color: upColor,
+              color0: downColor,
+              borderColor: upBorderColor,
+              borderColor0: downBorderColor
+            },
+            markPoint: {
+              label: {
+                formatter: function (param) {
+                  return param != null ? Math.round(param.value) + '' : '';
+                }
+              },
+              data: [
+                {
+                  name: 'Mark',
+                  coord: ['2013/5/31', 2300],
+                  value: 2300,
+                  itemStyle: {
+                    color: 'rgb(41,60,85)'
+                  }
+                },
+                {
+                  name: 'highest value',
+                  type: 'max',
+                  valueDim: 'highest'
+                },
+                {
+                  name: 'lowest value',
+                  type: 'min',
+                  valueDim: 'lowest'
+                },
+                {
+                  name: 'average value on close',
+                  type: 'average',
+                  valueDim: 'close'
+                }
+              ],
+              tooltip: {
+                formatter: function (param) {
+                  return param.name + '<br>' + (param.data.coord || '');
+                }
+              }
+            },
+            markLine: {
+              symbol: ['none', 'none'],
+              data: [
+                [
+                  {
+                    name: 'from lowest to highest',
+                    type: 'min',
+                    valueDim: 'lowest',
+                    symbol: 'circle',
+                    symbolSize: 10,
+                    label: {
+                      show: false
+                    },
+                    emphasis: {
+                      label: {
+                        show: false
+                      }
+                    }
+                  },
+                  {
+                    type: 'max',
+                    valueDim: 'highest',
+                    symbol: 'circle',
+                    symbolSize: 10,
+                    label: {
+                      show: false
+                    },
+                    emphasis: {
+                      label: {
+                        show: false
+                      }
+                    }
+                  }
+                ],
+                {
+                  name: 'min line on close',
+                  type: 'min',
+                  valueDim: 'close'
+                },
+                {
+                  name: 'max line on close',
+                  type: 'max',
+                  valueDim: 'close'
+                }
+              ]
+            }
+          },
+          {
+            name: 'MA5',
+            type: 'line',
+            // data: calculateMA(5),
+            data: {{ stock_datas["sma5"] | tojson }},
+            smooth: true,
+            lineStyle: {
+              opacity: 0.5
+            }
+          },
+          {
+            name: 'MA10',
+            type: 'line',
+            data: {{ stock_datas["sma10"] | tojson }},
+            smooth: true,
+            lineStyle: {
+              opacity: 0.5
+            }
+          },
+          {
+            name: 'MA20',
+            type: 'line',
+            data: {{ stock_datas["sma20"] | tojson }},
+            smooth: true,
+            lineStyle: {
+              opacity: 0.5
+            }
+          },
+          {
+            name: 'MA60',
+            type: 'line',
+            data: {{ stock_datas["sma60"] | tojson }},
+            smooth: true,
+            lineStyle: {
+              opacity: 0.5
+            }
+          },
+          {
+            name: 'MA200',
+            type: 'line',
+            data: {{ stock_datas["sma200"] | tojson }},
+            smooth: true,
+            lineStyle: {
+            opacity: 0.5
+          }
+          }
+          
+        ]
+      };
+
+      option && myChart.setOption(option);
+
+    </script>
+  {% endif %}
+{% endblock %}
