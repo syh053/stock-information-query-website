@@ -1,9 +1,9 @@
 from pathlib import Path
 import sys
 
-root = Path(__file__).resolve().parents[2] / "mysql"
-print(root)
-sys.path.append(str(root))
+root = Path(__file__).resolve().parents[2]
+sys.path.append(str(root / "mysql"))
+sys.path.append(str(root / "pred"))
 
 
 from flask import Blueprint, render_template, request, redirect, url_for
@@ -63,6 +63,12 @@ def stock(stock_num):
   return render_template("stock.html", stock_num=stock_num, datas=datas, stock_datas=stock_datas)
 
 
+# 股票預測路由
+@stocks.route("/pred/<stock_num>", methods = ["GET"])
+def predict(stock_num):
+  return render_template("pred.html")
+
+
 # 從導向到"股票查詢"路由
 @stocks.route("/stock")
 def stock_redirect():
@@ -73,3 +79,15 @@ def stock_redirect():
   
   else :
     return render_template("stock.html", stock_datas={})
+  
+
+# 從導向到"股票預測"路由
+@stocks.route("/pred")
+def pred_redirect():
+  stock_num = request.args.get("stock_num")
+
+  if stock_num :
+    return redirect(url_for("routes.stocks.predict", stock_num=stock_num))
+  
+  else :
+    return render_template("pred.html", stock_datas={})
